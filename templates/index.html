@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Banco de preguntas</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+        integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+    <link href="https://fonts.googleapis.com/css2?family=Lobster&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'main.css') }}">
+
+</head>
+
+<body>
+    <main class="container pd-4">
+        <h1 class="display-4 text-center title">
+            Gestion banco de preguntas
+        </h1>
+
+        <div class="row">
+            <div class="col offset my-auto">
+                <div class="card">
+                    <div class="card-header">
+                        <nav>
+                            <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                                {% for row in entidades %}
+                                {% if nav == row %}
+                                <a class="nav-item nav-link active" id="nav-{{row}}-tab" data-toggle="tab"
+                                    href="/nav/{{row}}" role="tab" aria-controls="nav-{{row}}"
+                                    aria-selected="true">{{row}}</a>
+                                {% else %}
+                                <a class="nav-item nav-link" id="nav-{{row}}-tab" data-toggle="tab" href="/nav/{{row}}"
+                                    role="tab" aria-controls="nav-{{row}}" aria-selected="false">{{row}}</a>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                        </nav>
+                        <form action="/crear/{{nav}}" method="POST">
+                            <div class="form-row">
+                                {% for campo in campos[1:] %}
+                                    <div class="col">
+                                        <input type="text" class="form-control" name="{{campo['name']}}"
+                                            value="{{campo['name']}}">
+                                    </div>
+                                {% endfor %}
+
+                                <div class="col">
+                                    <button type="submit" class="btn btn-primary btn-block">
+                                        crear
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="nav-tabContent">
+                            <div class="tab-pane fade show active" id="nav-home" role="tabpanel"
+                                aria-labelledby="nav-home-tab">
+                                {% for row in registros %}
+                                <div class="form-row">
+                                    {% for column in row[1:] %}
+                                        <div class="col">
+                                            <input type="text" class="form-control" value="{{column}}" readonly>
+                                        </div>
+                                    {% endfor %}
+                                    <a href="/borrar/{{nav}}/{{row[0]}}" class="btn btn-danger btn-sm">
+                                        borrar
+                                    </a>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+</body>
+
+</html>
