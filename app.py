@@ -1,10 +1,11 @@
-from flask import Flask, redirect, url_for, render_template, request
+from flask import Flask, redirect, url_for, render_template, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, MetaData
 from sqlalchemy.orm import relationship
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///BasesDeDatos/BancoPreguntas.db'
+app.config['SECRET_KEY'] = "123456789"
 
 db = SQLAlchemy(app)
 inspector = inspect(db.engine)
@@ -135,133 +136,116 @@ def home():
    # buscar metadata 
    return render_template('index.html', entidades = entidades, nav = entidades[0], campos = campos, registros = registros)
 
-@app.route('/crear/<entidad>', methods=["POST"])
+@app.route('/crear/<entidad>', methods=["POST", "GET"])
 def crear(entidad):
    if entidad == "Tipos de categoria":
-      return crearTipoCategoria(request.form['tca_nombre'])
+      crearTipoCategoria(request.form['tca_nombre'])
    elif entidad == "Categorias":
-      return crearCategoria(request.form['cat_nombre'], request.form['cat_tipo'])
+      crearCategoria(request.form['cat_nombre'], request.form['cat_tipo'])
    elif entidad == "Tipos de competencia":
-      return crearTipoCompetencia(request.form['tco_nombre'])
+      crearTipoCompetencia(request.form['tco_nombre'])
    elif entidad == "Competencias":
-      return crearCompetencia(request.form['com_nombre'], request.form['com_tipo'], request.form['com_desc'])
+      crearCompetencia(request.form['com_nombre'], request.form['com_tipo'], request.form['com_desc'])
    elif entidad == "Tipos de pregunta":
-      return crearTipoPregunta(request.form['tpp_nombre'])
+      crearTipoPregunta(request.form['tpp_nombre'])
    elif entidad == "Preguntas":
-      return crearPregunta(request.form['pre_texto'], request.form['tpr_id'], request.form['cat_id'], request.form['com_id'])
+      crearPregunta(request.form['pre_texto'], request.form['tpr_id'], request.form['cat_id'], request.form['com_id'])
    elif entidad == "Roles":
-      return crearRol(request.form['rol_nombre'])
+      crearRol(request.form['rol_nombre'])
    elif entidad == "Usuarios":
-      return crearUsuario(request.form['user_nombre'], request.form['user_apellido'], request.form['user_passw'], request.form['user_email'], request.form['user_proy'], request.form['user_cod'], request.form['rol_id'])
+      crearUsuario(request.form['user_nombre'], request.form['user_apellido'], request.form['user_passw'], request.form['user_email'], request.form['user_proy'], request.form['user_cod'], request.form['rol_id'])
    elif entidad == "Evaluaciones":
       if request.form['eval_conjunta'] == 'false':
-         return crearEvaluacion(request.form['eval_nombre'], request.form['eval_pporPag'], request.form['eval_maxPuntos'], request.form['eval_puntosP'], request.form['pregunta_id'], False)
+         crearEvaluacion(request.form['eval_nombre'], request.form['eval_pporPag'], request.form['eval_maxPuntos'], request.form['eval_puntosP'], request.form['pregunta_id'], False)
       else:
-         return crearEvaluacion(request.form['eval_nombre'], request.form['eval_pporPag'], request.form['eval_maxPuntos'], request.form['eval_puntosP'], request.form['pregunta_id'], True)
+         crearEvaluacion(request.form['eval_nombre'], request.form['eval_pporPag'], request.form['eval_maxPuntos'], request.form['eval_puntosP'], request.form['pregunta_id'], True)
    elif entidad == "Respuestas":
-      return crearRespuesta(request.form['res_texto'])
+      crearRespuesta(request.form['res_texto'])
    
+   flash("Se ha registrado en " + entidad)
 
-
-   return "metodo de creacion general en construccion..."
+   return nav(entidad)
 
 @app.route('/crearTipoCategoria/<nombre>')
 def crearTipoCategoria(nombre):
    tipo = tipo_categoria(nombre)
    db.session.add(tipo)
    db.session.commit()
-   return nav('Tipos de categoria')
 
 @app.route('/crearCategoria/<nombre>/<tipo>')
 def crearCategoria(nombre, tipo):
    cat = categoria(nombre, tipo)
    db.session.add(cat)
    db.session.commit()
-   return nav('Categorias')
 
 @app.route('/crearTipoCompetencia/<nombre>')
 def crearTipoCompetencia(nombre):
    tipo = tipo_competencia(nombre)
    db.session.add(tipo)
    db.session.commit()
-   return nav('Tipos de competencia')
 
 @app.route('/crearCompetencia/<nombre>/<tipo>/<desc>')
 def crearCompetencia(nombre, tipo, desc):
    com = competencia(nombre, tipo, desc)
    db.session.add(com)
    db.session.commit()
-   return nav('Competencias')
 
 @app.route('/crearTipoPregunta/<nombre>')
 def crearTipoPregunta(nombre):
    tipo = tipo_pregunta(nombre)
    db.session.add(tipo)
    db.session.commit()
-   return nav('Tipos de pregunta')
 
 @app.route('/crearPregunta/<texto>/<tipo>/<cat>/<com>')
 def crearPregunta(texto, tipo, cat, com):
    pre = pregunta(texto, cat, tipo, com)
    db.session.add(pre)
    db.session.commit()
-   return nav('Preguntas')
 
 @app.route('/crearRol/<nombre>')
 def crearRol(nombre):
    r = rol(nombre)
    db.session.add(r)
    db.session.commit()
-   return nav('Roles')
 
 @app.route('/crearUsuario/<nombre>/<apellido>/<passw>/<email>/<proy>/<cod>/<rol_id>')
 def crearUsuario(nombre, apellido, passw, email, proy, cod, rol_id):
    usr = usuario(nombre, apellido, passw, email, proy, cod, rol_id)
    db.session.add(usr)
    db.session.commit()
-   return nav('Usuarios')
 
 @app.route('/crearEvaluacion/<nombre>/<pporPag>/<maxPuntos>/<puntosP>/<pregunta_id>/<conjunta>')
 def crearEvaluacion(nombre, pporPag, maxPuntos, puntosP, pregunta_id, conjunta):
    eva = evaluacion(nombre, pporPag, maxPuntos, puntosP, pregunta_id, conjunta)
    db.session.add(eva)
    db.session.commit()
-   return nav('Evaluaciones')
 
 @app.route('/crearRespuesta/<res_texto>')
 def crearRespuesta(res_texto):
    res = respuesta(res_texto)
    db.session.add(res)
    db.session.commit()
-   return nav('Respuestas')
 
 @app.route('/borrar/<entidad>/<id>')
 def borrar(entidad, id):
    #m = MetaData()
    #m.reflect(bind=db.engine)
    #tmp = db.session.query(m.tables[entidad]).filter_by(id=int(id)).delete()
-   if entidad == "Categorias":
-      tmp = categoria.query.filter_by(id=int(id)).delete()
-   elif entidad == "Tipos de categoria":
-      tmp = tipo_categoria.query.filter_by(id=int(id)).delete()
-   elif entidad == "Preguntas":
-      tmp = pregunta.query.filter_by(id=int(id)).delete()
-   elif entidad == "Competencias":
-      tmp = competencia.query.filter_by(id=int(id)).delete()
-   elif entidad == "Tipos de competencia":
-      tmp = tipo_competencia.query.filter_by(id=int(id)).delete()
-   elif entidad == "Tipos de pregunta":
-      tmp = tipo_pregunta.query.filter_by(id=int(id)).delete()
-   elif entidad == "Respuestas":
-      tmp = respuesta.query.filter_by(id=int(id)).delete()
-   elif entidad == "Usuarios":
-      tmp = usuario.query.filter_by(id=int(id)).delete()
-   elif entidad == "Roles":
-      tmp = rol.query.filter_by(id=int(id)).delete()
-   elif entidad == "Evaluaciones":
-      tmp = evaluacion.query.filter_by(id=int(id)).delete()
+   
+   getClass(entidad).query.filter_by(id=int(id)).delete()
    
    db.session.commit()
+   flash("Se ha borrado un registro de " + entidad)
+   return nav(entidad)
+
+@app.route('/editar/<entidad>/<id>', methods=["POST", "GET"])
+def editar(entidad, id):
+   campos = inspector.get_columns(entidad)
+   for campo in campos[1:]:
+      db.session.query(getClass(entidad)).filter_by(id=int(id)).update({f"{campo['name']}": request.form[f"{id}{campo['name']}"]})
+   
+   db.session.commit()
+   flash("Se ha editado un registro de " + entidad)
    return nav(entidad)
 
 @app.route('/nav/<entidad>')
@@ -273,6 +257,28 @@ def nav(entidad):
    registros = db.session.query(m.tables[entidad]).all()
    # para las variables tambien se puede -> session['campos'] = campos
    return render_template('index.html', entidades = entidades, nav = entidad, campos = campos, registros = registros)
+
+def getClass(entidad):
+   if entidad == "Categorias":
+      return categoria
+   elif entidad == "Tipos de categoria":
+      return tipo_categoria
+   elif entidad == "Preguntas":
+      return pregunta
+   elif entidad == "Competencias":
+      return competencia
+   elif entidad == "Tipos de competencia":
+      return tipo_competencia
+   elif entidad == "Tipos de pregunta":
+      return tipo_pregunta
+   elif entidad == "Respuestas":
+      return respuesta
+   elif entidad == "Usuarios":
+      return usuario
+   elif entidad == "Roles":
+      return rol
+   elif entidad == "Evaluaciones":
+      return evaluacion
 
 if __name__ == '__main__':
    db.drop_all()
