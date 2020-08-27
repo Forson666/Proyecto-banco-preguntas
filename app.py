@@ -1,7 +1,10 @@
 from flask import Flask, redirect, url_for, render_template, request, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import inspect, MetaData
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
+from sqlite3 import Connection as SQLite3Connection
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///BasesDeDatos/BancoPreguntas.db'
@@ -10,11 +13,20 @@ app.config['SECRET_KEY'] = "123456789"
 db = SQLAlchemy(app)
 inspector = inspect(db.engine)
 
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, connection_record):
+   if isinstance(dbapi_connection, SQLite3Connection):
+      cursor = dbapi_connection.cursor()
+      cursor.execute("PRAGMA foreign_keys=ON;")
+      cursor.close()
+
 class categoria(db.Model):
    __tablename__ = 'Categorias'
    id = db.Column('cat_id', db.Integer, primary_key = True)
    cat_nombre = db.Column(db.String(100), nullable=False)
    cat_tipo = db.Column(db.Integer, db.ForeignKey('Tipos de categoria.tca_id'), unique=False, nullable=False)
+
+   tipo = relationship("tipo_categoria", backref=backref('tipo', order_by=id))
 
    def __init__(self, nombre, tipo):
        self.cat_nombre = nombre
@@ -24,8 +36,6 @@ class tipo_categoria(db.Model):
    __tablename__ = 'Tipos de categoria'
    id = db.Column('tca_id', db.Integer, primary_key = True)
    tca_nombre = db.Column(db.String(50), unique=True,nullable=False)
-
-   categorias = relationship("categoria", backref="tipo")
 
    def __init__(self, nombre):
        self.tca_nombre = nombre
@@ -133,8 +143,11 @@ def home():
    m = MetaData()
    m.reflect(bind=db.engine)
    registros = db.session.query(m.tables[entidades[0]]).all()
-   # buscar metadata 
-   return render_template('index.html', entidades = entidades, nav = entidades[0], campos = campos, registros = registros)
+
+   fk_info = inspector.get_foreign_keys(entidades[0])
+   fk_val = {x['constrained_columns'][0] : db.session.query(m.tables[x['referred_table']]).all() for x in fk_info}
+
+   return render_template('index.html', entidades = entidades, nav = entidades[0], campos = campos, registros = registros, fk=fk_val)
 
 @app.route('/crear/<entidad>', methods=["POST", "GET"])
 def crear(entidad):
@@ -156,9 +169,9 @@ def crear(entidad):
       crearUsuario(request.form['user_nombre'], request.form['user_apellido'], request.form['user_passw'], request.form['user_email'], request.form['user_proy'], request.form['user_cod'], request.form['rol_id'])
    elif entidad == "Evaluaciones":
       if request.form['eval_conjunta'] == 'false':
-         crearEvaluacion(request.form['eval_nombre'], request.form['eval_pporPag'], request.form['eval_maxPuntos'], request.form['eval_puntosP'], request.form['pregunta_id'], False)
+         crearEvaluacion(request.form['eval_nombre'], int(request.form['eval_pporPag']), int(request.form['eval_maxPuntos']), int(request.form['eval_puntosP']), int(request.form['pregunta_id']), False)
       else:
-         crearEvaluacion(request.form['eval_nombre'], request.form['eval_pporPag'], request.form['eval_maxPuntos'], request.form['eval_puntosP'], request.form['pregunta_id'], True)
+         crearEvaluacion(request.form['eval_nombre'], int(request.form['eval_pporPag']), int(request.form['eval_maxPuntos']), int(request.form['eval_puntosP']), int(request.form['pregunta_id']), True)
    elif entidad == "Respuestas":
       crearRespuesta(request.form['res_texto'])
    
@@ -228,9 +241,6 @@ def crearRespuesta(res_texto):
 
 @app.route('/borrar/<entidad>/<id>')
 def borrar(entidad, id):
-   #m = MetaData()
-   #m.reflect(bind=db.engine)
-   #tmp = db.session.query(m.tables[entidad]).filter_by(id=int(id)).delete()
    
    getClass(entidad).query.filter_by(id=int(id)).delete()
    
@@ -242,7 +252,13 @@ def borrar(entidad, id):
 def editar(entidad, id):
    campos = inspector.get_columns(entidad)
    for campo in campos[1:]:
-      db.session.query(getClass(entidad)).filter_by(id=int(id)).update({f"{campo['name']}": request.form[f"{id}{campo['name']}"]})
+      if campo['name'] == 'eval_conjunta':
+         if request.form[f"{id}{campo['name']}"] == 'false':
+            db.session.query(getClass(entidad)).filter_by(id=int(id)).update({f"{campo['name']}": False})
+         else:
+            db.session.query(getClass(entidad)).filter_by(id=int(id)).update({f"{campo['name']}": True})
+      else:
+         db.session.query(getClass(entidad)).filter_by(id=int(id)).update({f"{campo['name']}": request.form[f"{id}{campo['name']}"]})
    
    db.session.commit()
    flash("Se ha editado un registro de " + entidad)
@@ -255,8 +271,12 @@ def nav(entidad):
    m = MetaData()
    m.reflect(bind=db.engine)
    registros = db.session.query(m.tables[entidad]).all()
+
+   fk_info = inspector.get_foreign_keys(entidad)
+   fk_val = {x['constrained_columns'][0] : db.session.query(m.tables[x['referred_table']]).all() for x in fk_info}
+
    # para las variables tambien se puede -> session['campos'] = campos
-   return render_template('index.html', entidades = entidades, nav = entidad, campos = campos, registros = registros)
+   return render_template('index.html', entidades = entidades, nav = entidad, campos = campos, registros = registros, fk=fk_val)
 
 def getClass(entidad):
    if entidad == "Categorias":
