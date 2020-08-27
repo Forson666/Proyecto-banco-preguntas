@@ -48,12 +48,14 @@
 
                         <div class="dropdown">
                             <a class="btn btn-secondary dropdown-toggle" role="button" id="dropdownMenuLink" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                              Entidades
+                              {{nav}}
                             </a>
                           
                             <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                                 {% for row in entidades %}
-                                <a class="dropdown-item" href="/nav/{{row}}">{{row}}</a>
+                                    {% if row != nav %}
+                                    <a class="dropdown-item" href="/nav/{{row}}">{{row}}</a>
+                                    {% endif %}
                                 {% endfor %}
                             </div>
                         </div>
@@ -62,8 +64,17 @@
                             <div class="form-row">
                                 {% for campo in campos[1:] %}
                                     <div class="col">
-                                        <input type="text" class="form-control" name="{{campo['name']}}"
-                                            value="{{campo['name']}}">
+                                        {% if campo['name'] not in fk %}
+                                            <input type="text" class="form-control" name="{{campo['name']}}"
+                                                value="{{campo['name']}}">
+                                        {% else %}
+                                            <select class="browser-default custom-select" name="{{campo['name']}}">
+                                                <option disabled selected>{{campo['name']}}</option>
+                                                {% for val in fk[campo['name']] %}
+                                                    <option value="{{val[0]}}">{{val[1]}}</option>
+                                                {% endfor %}
+                                            </select>
+                                        {% endif %}
                                     </div>
                                 {% endfor %}
 
@@ -81,7 +92,19 @@
                             <div class="form-row">
                                 {% for i in range(1, row|length) %}
                                     <div class="col">
-                                        <input type="text" class="form-control" name="{{row[0]}}{{campos[i]['name']}}" value="{{row[i]}}">
+                                        {% if campos[i]['name'] not in fk %}
+                                            <input type="text" class="form-control" name="{{row[0]}}{{campos[i]['name']}}" value="{{row[i]}}">
+                                        {% else %}
+                                            <select class="browser-default custom-select" name="{{row[0]}}{{campos[i]['name']}}">
+                                                {% for val in fk[campos[i]['name']] %}
+                                                    {% if val[0] == row[i] %}
+                                                        <option value="{{val[0]}}" selected>{{val[1]}}</option>
+                                                    {% else %}
+                                                        <option value="{{val[0]}}">{{val[1]}}</option>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </select>
+                                        {% endif %}
                                     </div>
                                 {% endfor %}
                                 <button type="submit" class="btn btn-success btn-sm">
